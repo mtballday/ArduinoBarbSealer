@@ -11,6 +11,8 @@
 #define STEPPER_DRIVER_BASE_H
 #include <Arduino.h>
 
+#define ENABLE 8
+
 // used internally by the library to mark unconnected pins
 #define PIN_UNCONNECTED -1
 #define IS_CONNECTED(pin) (pin != PIN_UNCONNECTED)
@@ -30,6 +32,9 @@
  */
 class BasicStepperDriver {
 public:
+    int LIMIT[3] = {9,10,11};
+    int STEPDIR[3] = {5,6,7};
+    int STEPPULSE[3] = {2,3,4};
     enum Mode {CONSTANT_SPEED, LINEAR_SPEED};
     enum State {STOPPED, ACCELERATING, CRUISING, DECELERATING};
     struct Profile {
@@ -55,6 +60,9 @@ private:
     long rest;
     unsigned long last_action_end = 0;
     unsigned long next_action_interval = 0;
+
+
+
 
 protected:
     /*

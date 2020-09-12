@@ -13,6 +13,7 @@
  */
 #include "BasicStepperDriver.h"
 
+
 /*
  * Basic connection: only DIR, STEP are connected.
  * Microstepping controls should be hardwired.
@@ -39,12 +40,14 @@ BasicStepperDriver::BasicStepperDriver(short steps, short dir_pin, short step_pi
  * Initialize pins, calculate timings etc
  */
 void BasicStepperDriver::begin(float rpm, short microsteps){
-    pinMode(dir_pin, OUTPUT);
-    digitalWrite(dir_pin, HIGH);
+    for(int ii=0; ii<3; ii++){
+      pinMode(LIMIT[ii], INPUT_PULLUP);
+      pinMode(STEPDIR[ii], OUTPUT);
+      digitalWrite(STEPDIR[ii], HIGH);
 
-    pinMode(step_pin, OUTPUT);
-    digitalWrite(step_pin, LOW);
-
+      pinMode(STEPPULSE[ii], OUTPUT);
+      digitalWrite(STEPPULSE[ii], LOW);
+    }
     if IS_CONNECTED(enable_pin){
         pinMode(enable_pin, OUTPUT);
         disable();
@@ -292,19 +295,30 @@ void BasicStepperDriver::calcStepPulse(void){
  * Toggle step and return time until next change is needed (micros)
  */
 long BasicStepperDriver::nextAction(void){
-    if (steps_remaining > 0){
+  int limit=!digitalRead(LIMIT[0]);
+  if(limit && dir_state==HIGH){
+    stop();
+  }
+
+  if (steps_remaining > 0){
         delayMicros(next_action_interval, last_action_end);
         /*
          * DIR pin is sampled on rising STEP edge, so it is set first
          */
-        digitalWrite(dir_pin, dir_state);
-        digitalWrite(step_pin, HIGH);
+        for(int ii=0; ii<3; ii++){
+          if(step_pin&(1<<ii)){
+            digitalWrite(STEPDIR[ii], dir_state);
+            digitalWrite(STEPPULSE[ii], HIGH);
+          }
+        }
         unsigned m = micros();
         unsigned long pulse = step_pulse; // save value because calcStepPulse() will overwrite it
         calcStepPulse();
         // We should pull HIGH for at least 1-2us (step_high_min)
         delayMicros(step_high_min);
-        digitalWrite(step_pin, LOW);
+        if(step_pin&1) digitalWrite(STEPPULSE[0], LOW);
+        if(step_pin&2) digitalWrite(STEPPULSE[1], LOW);
+        if(step_pin&4) digitalWrite(STEPPULSE[2], LOW);
         // account for calcStepPulse() execution time; sets ceiling for max rpm on slower MCUs
         last_action_end = micros();
         m = last_action_end - m;
